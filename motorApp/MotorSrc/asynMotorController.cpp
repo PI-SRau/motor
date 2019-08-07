@@ -19,6 +19,14 @@
 #include "asynMotorController.h"
 #include "asynMotorAxis.h"
 
+#ifndef VERSION_INT
+#  define VERSION_INT(V,R,M,P) ( ((V)<<24) | ((R)<<16) | ((M)<<8) | (P))
+#endif
+
+#define MOTOR_ASYN_VERSION_INT VERSION_INT(ASYN_VERSION,ASYN_REVISION,ASYN_MODIFICATION,0)
+
+#define VERSION_INT_4_32 VERSION_INT(4,32,0,0)
+
 static const char *driverName = "asynMotorController";
 static void asynMotorPollerC(void *drvPvt);
 static void asynMotorMoveToHomeC(void *drvPvt);
@@ -34,12 +42,14 @@ asynMotorController::asynMotorController(const char *portName, int numAxes, int 
                                          int interfaceMask, int interruptMask,
                                          int asynFlags, int autoConnect, int priority, int stackSize)
 
-  : asynPortDriver(portName, numAxes, NUM_MOTOR_DRIVER_PARAMS+numParams,
+  : asynPortDriver(portName, numAxes,
+#if MOTOR_ASYN_VERSION_INT < VERSION_INT_4_32
+                   NUM_MOTOR_DRIVER_PARAMS+numParams,
+#endif
       interfaceMask | asynOctetMask | asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask | asynGenericPointerMask | asynDrvUserMask,
       interruptMask | asynOctetMask | asynInt32Mask | asynFloat64Mask | asynFloat64ArrayMask | asynGenericPointerMask,
       asynFlags, autoConnect, priority, stackSize),
     shuttingDown_(0), numAxes_(numAxes)
-
 {
   static const char *functionName = "asynMotorController";
 
@@ -280,6 +290,7 @@ asynStatus asynMotorController::writeFloat64(asynUser *pasynUser, epicsFloat64 v
   if (function == motorMoveRel_) {
     if (autoPower == 1) {
       status = pAxis->setClosedLoop(true);
+      pAxis->setWasMovingFlag(1);
       epicsThreadSleep(autoPowerOnDelay);
     }
     getDoubleParam(axis, motorVelBase_, &baseVelocity);
@@ -296,6 +307,7 @@ asynStatus asynMotorController::writeFloat64(asynUser *pasynUser, epicsFloat64 v
   } else if (function == motorMoveAbs_) {
     if (autoPower == 1) {
       status = pAxis->setClosedLoop(true);
+      pAxis->setWasMovingFlag(1);
       epicsThreadSleep(autoPowerOnDelay);
     }
     getDoubleParam(axis, motorVelBase_, &baseVelocity);
@@ -312,6 +324,7 @@ asynStatus asynMotorController::writeFloat64(asynUser *pasynUser, epicsFloat64 v
   } else if (function == motorMoveVel_) {
     if (autoPower == 1) {
       status = pAxis->setClosedLoop(true);
+      pAxis->setWasMovingFlag(1);
       epicsThreadSleep(autoPowerOnDelay);
     }
     getDoubleParam(axis, motorVelBase_, &baseVelocity);
@@ -328,6 +341,7 @@ asynStatus asynMotorController::writeFloat64(asynUser *pasynUser, epicsFloat64 v
   } else if (function == motorHome_) {
     if (autoPower == 1) {
       status = pAxis->setClosedLoop(true);
+      pAxis->setWasMovingFlag(1);
       epicsThreadSleep(autoPowerOnDelay);
     }
     getDoubleParam(axis, motorVelBase_, &baseVelocity);
